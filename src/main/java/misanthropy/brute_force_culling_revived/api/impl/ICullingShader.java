@@ -19,5 +19,4 @@ public interface ICullingShader {
     @Nullable Uniform bruteForceRenderingRevived$getFrustumPos();
     @Nullable Uniform bruteForceRenderingRevived$getCullingViewMat();
     @Nullable Uniform bruteForceRenderingRevived$getCullingProjMat();
-    @Nullable Uniform bruteForceRenderingRevived$getTestPos();
 }

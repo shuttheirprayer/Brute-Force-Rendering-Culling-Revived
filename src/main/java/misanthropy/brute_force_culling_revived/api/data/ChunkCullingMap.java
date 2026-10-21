@@ -8,8 +8,6 @@ import net.minecraft.world.phys.Vec3;
 public class ChunkCullingMap extends CullingMap {
     private int renderDistance = 0;
     private int spacePartitionSize = 0;
-    public int queueUpdateCount = 0;
-    public int lastQueueUpdateCount = 0;
     private int cameraX;
     private int cameraZ;
 

@@ -14,7 +14,6 @@ import org.jetbrains.annotations.NotNull;
 import java.nio.FloatBuffer;
 import java.util.function.Consumer;
 
-import static net.minecraftforge.common.extensions.IForgeBlockEntity.INFINITE_EXTENT_AABB;
 
 public class EntityCullingMap extends CullingMap {
     private final EntityMap entityMap = new EntityMap();
@@ -167,7 +166,7 @@ public class EntityCullingMap extends CullingMap {
             for (Object o : indexMap) {
                 int slot = index++;
                 AABB aabb = ModLoader.getObjectAABB(o);
-                if (aabb == null || aabb == INFINITE_EXTENT_AABB) continue;
+                if (aabb == null || !Double.isFinite(aabb.minX + aabb.minY + aabb.minZ + aabb.maxX + aabb.maxY + aabb.maxZ)) continue;
 
                 float inflate = 0.0F;
                 if (o instanceof Entity e) {

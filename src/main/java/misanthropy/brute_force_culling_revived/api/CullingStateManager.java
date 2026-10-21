@@ -7,7 +7,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import com.mojang.logging.LogUtils;
 import com.mojang.math.Axis;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import misanthropy.brute_force_culling_revived.api.data.ChunkCullingMap;
 import misanthropy.brute_force_culling_revived.api.data.EntityCullingMap;
 import misanthropy.brute_force_culling_revived.api.impl.IEntitiesForRender;
@@ -23,6 +22,8 @@ import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.vehicle.AbstractMinecart;
+import net.minecraft.world.entity.vehicle.Boat;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
@@ -115,7 +116,11 @@ public class CullingStateManager {
     public static int LEVEL_MIN_POS;
     public static Camera CAMERA;
 
-    private static final Int2IntOpenHashMap SHADER_DEPTH_BUFFER_ID = new Int2IntOpenHashMap();
+    // Iris re-attaches the main depth texture to its framebuffers whenever that texture is recreated (resize,
+    // render scale), so the lookup is keyed on both ids. Caching on the framebuffer alone kept a dead texture.
+    private static int shaderDepthFbo = -1;
+    private static int shaderDepthSource = -1;
+    private static int shaderDepthTexture = -1;
     private static int frame;
     private static int lastVisibleUpdatedFrame;
     public static volatile boolean useOcclusionCulling = true;
@@ -180,7 +185,7 @@ public class CullingStateManager {
             ENTITY_CULLING_MAP = null;
         }
 
-        SHADER_DEPTH_BUFFER_ID.clear();
+        shaderDepthFbo = -1;
         ModLoader.pauseAsync();
         if (ModLoader.hasSodium()) {
             SodiumSectionAsyncUtil.pauseAsync();
@@ -210,7 +215,7 @@ public class CullingStateManager {
         final ChunkCullingMap map = CHUNK_CULLING_MAP;
         if (map == null) return true;
 
-        if (!useOcclusionCulling && (DEBUG < 2 || Config.getAsyncChunkRebuild())) return true;
+        if (!useOcclusionCulling && !RenderSystem.isOnRenderThread() && (DEBUG < 2 || Config.getAsyncChunkRebuild())) return true;
 
         final int frameMark = lastVisibleUpdatedFrame;
         if (!section.bruteForceRenderingRevived$isVisibleAtFrame(frameMark)
@@ -297,7 +302,7 @@ public class CullingStateManager {
     public static boolean isTickCullable(@NotNull Entity entity) {
         if (!Config.getTickCulling() || !Config.getCullEntity()) return false;
         if (entity instanceof Player || entity.noCulling || entity.isCurrentlyGlowing()) return false;
-        if (entity.isVehicle()) return false;
+        if (entity.isVehicle() || entity instanceof Boat || entity instanceof AbstractMinecart) return false;
         if (Config.shouldSkipEntityType(entity.getType())) return false;
 
         Camera camera = CAMERA;
@@ -396,13 +401,6 @@ public class CullingStateManager {
                 cullingInitCount = preCullingInitCount; preCullingInitCount = 0;
                 entityCullingInitTime = preEntityCullingInitTime; preEntityCullingInitTime = 0;
                 chunkCullingTime = PRE_CHUNK_CULLING_TIME.getAndSet(0);
-
-                final ChunkCullingMap chunkMap = CHUNK_CULLING_MAP;
-                if (chunkMap != null) {
-                    chunkMap.lastQueueUpdateCount = chunkMap.queueUpdateCount;
-                    chunkMap.queueUpdateCount = 0;
-                }
-
             }
         }
     }
@@ -466,20 +464,22 @@ public class CullingStateManager {
             ShaderLoader loader = SHADER_LOADER;
             if (loader != null && loader.enabledShader()) {
                 int fboId = loader.getFrameBufferID();
-                if (!SHADER_DEPTH_BUFFER_ID.containsKey(fboId)) {
+                if (fboId != shaderDepthFbo || depthTexture != shaderDepthSource) {
                     RenderSystem.assertOnRenderThreadOrInit();
+                    shaderDepthFbo = fboId;
+                    shaderDepthSource = depthTexture;
+                    shaderDepthTexture = -1;
                     GlStateManager._glBindFramebuffer(GL_FRAMEBUFFER, fboId);
                     int[] attachmentObjectType = new int[1];
                     glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, attachmentObjectType);
-
                     if (attachmentObjectType[0] == GL_TEXTURE) {
                         int[] depthTextureID = new int[1];
                         glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, depthTextureID);
-                        depthTexture = depthTextureID[0];
-                        SHADER_DEPTH_BUFFER_ID.put(fboId, depthTexture);
+                        shaderDepthTexture = depthTextureID[0];
                     }
-                } else {
-                    depthTexture = SHADER_DEPTH_BUFFER_ID.get(fboId);
+                }
+                if (shaderDepthTexture != -1) {
+                    depthTexture = shaderDepthTexture;
                 }
             }
 
@@ -613,7 +613,6 @@ public class CullingStateManager {
     }
 
     public static void callDepthTexture() { runOnDepthFrame(ctx -> RenderSystem.setShaderTexture(ctx.index(), DEPTH_TEXTURE[ctx.index()])); }
-    public static boolean renderingIris() { return renderingShader(); }
     public static boolean renderingShader() { return SHADER_LOADER != null && SHADER_LOADER.renderingShaderPass(); }
     public static boolean enabledShader() { return SHADER_LOADER != null && SHADER_LOADER.enabledShader(); }
 

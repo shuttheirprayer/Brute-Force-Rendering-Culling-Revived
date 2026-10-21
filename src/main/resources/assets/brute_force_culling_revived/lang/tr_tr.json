@@ -33,7 +33,6 @@
   "brute_force_culling_revived.detail.culling_map_update_delay": "Kesme dokusunun CPU’ya aktarılmadan önce geciktirildiği kare sayısını belirler. Bu, eksik veri aktarımından kaynaklanan takılmaları önler. Değer yükseldikçe kesme hızı yavaşlar. Hata ayıklama için güncelleme süresini gözlemleyebilirsiniz. Shaderlar açıkken veri aktarımı yavaşlar ve gecikme otomatik olarak 1 kare artar.",
   "brute_force_culling_revived.detail.check_texture": "Test seçeneği. Veri izleme paneli açıkken derinlik ve kesme dokularının doğru çalışıp çalışmadığını kontrol eder.",
   "brute_force_culling_revived.detail.debug": "Test seçeneği. Sadece vanilla Minecraft’ta etkilidir ve hangi chunkların kesildiğini gösterir.",
-  "brute_force_culling_revived.detail.nvidium": "Uyarı: Nvidium modunun Async BFS özelliği ile uyumsuzdur.",
   "brute_force_culling_revived.detail.auto_shader_async": "Bazı cihazlarda shaderlar ile asenkron chunk yeniden inşası aynı anda kullanıldığında çökme olabilir. Bu ayar shaderlar açıkken asenkron chunk yeniden inşasını otomatik olarak kapatır.",
   "brute_force_culling_revived.detail.sodium": "Uyarı: Bu özellik için Sodium veya Embeddium gerekir.",
   "brute_force_culling_revived.detail.gl33": "Uyarı: OpenGL 3.3 desteği gereklidir.",

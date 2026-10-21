@@ -10,7 +10,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.occlusion.OcclusionCuller;
 import me.jellysquid.mods.sodium.client.render.chunk.region.RenderRegion;
 import me.jellysquid.mods.sodium.client.render.viewport.Viewport;
 import misanthropy.brute_force_culling_revived.api.CullingStateManager;
-import misanthropy.brute_force_culling_revived.api.data.ChunkCullingMap;
 import misanthropy.brute_force_culling_revived.api.impl.ICollectorAccessor;
 import misanthropy.brute_force_culling_revived.api.impl.IRenderSectionVisibility;
 import net.minecraft.world.level.Level;
@@ -58,10 +57,22 @@ public class SodiumSectionAsyncUtil {
     public static void asyncSearchRebuildSection() {
         int currentGeneration;
         OcclusionCuller culler;
+        Viewport localShadowViewport;
+        float localShadowSearchDistance;
+        boolean localShadowUseOcclusionCulling;
+        Viewport localViewport;
+        float localSearchDistance;
+        boolean localUseOcclusionCulling;
 
         synchronized (LOCK) {
             currentGeneration = generation;
             culler = occlusionCuller;
+            localShadowViewport = shadowViewport;
+            localShadowSearchDistance = shadowSearchDistance;
+            localShadowUseOcclusionCulling = shadowUseOcclusionCulling;
+            localViewport = viewport;
+            localSearchDistance = searchDistance;
+            localUseOcclusionCulling = useOcclusionCulling;
         }
 
         if (CullingStateManager.needPauseRebuild() || culler == null) {
@@ -69,31 +80,27 @@ public class SodiumSectionAsyncUtil {
         }
 
         VisibleChunkCollector sColl = null;
-        Viewport localShadowViewport = shadowViewport;
 
         if (CullingStateManager.enabledShader() && localShadowViewport != null) {
             frame++;
             CullingStateManager.useOcclusionCulling = false;
-            sColl = new AsynchronousChunkCollector(frame);
-            culler.findVisible(sColl, localShadowViewport, shadowSearchDistance, shadowUseOcclusionCulling, frame);
-            CullingStateManager.useOcclusionCulling = true;
+            try {
+                sColl = new AsynchronousChunkCollector(frame);
+                culler.findVisible(sColl, localShadowViewport, localShadowSearchDistance, localShadowUseOcclusionCulling, frame);
+            } finally {
+                CullingStateManager.useOcclusionCulling = true;
+            }
         }
 
         VisibleChunkCollector mainColl = null;
         boolean localNeedSyncRebuild = false;
-        Viewport localViewport = viewport;
 
         if (localViewport != null) {
             frame++;
             mainColl = CullingStateManager.checkCulling ?
                     new DebugChunkCollector(frame) : new AsynchronousChunkCollector(frame);
 
-            culler.findVisible(mainColl, localViewport, searchDistance, useOcclusionCulling, frame);
-
-            ChunkCullingMap chunkMap = CullingStateManager.CHUNK_CULLING_MAP;
-            if (chunkMap != null) {
-                chunkMap.queueUpdateCount++;
-            }
+            culler.findVisible(mainColl, localViewport, localSearchDistance, localUseOcclusionCulling, frame);
 
             Map<ChunkUpdateType, ArrayDeque<RenderSection>> rebuildList = mainColl.getRebuildLists();
             for (ArrayDeque<RenderSection> queue : rebuildList.values()) {
@@ -147,7 +154,7 @@ public class SodiumSectionAsyncUtil {
     }
 
     public static @Nullable VisibleChunkCollector getActiveCollector() {
-        return CullingStateManager.renderingIris() ? getShadowCollector() : getChunkCollector();
+        return CullingStateManager.renderingShader() ? getShadowCollector() : getChunkCollector();
     }
 
     public static boolean hasCuller() {

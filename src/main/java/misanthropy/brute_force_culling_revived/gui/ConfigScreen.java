@@ -173,9 +173,8 @@ public class ConfigScreen extends Screen {
         addConfigButton(Config::getAutoDisableAsync, Config::setAutoDisableAsync, () -> Component.translatable("brute_force_culling_revived.auto_shader_async"))
                 .setDetailMessage(() -> Component.translatable("brute_force_culling_revived.detail.auto_shader_async"));
 
-        addConfigButton(() -> ModLoader.hasSodium() && !ModLoader.hasNvidium(), Config::getAsyncChunkRebuild, Config::setAsyncChunkRebuild, () -> Component.translatable("brute_force_culling_revived.async"))
+        addConfigButton(ModLoader::hasSodium, Config::getAsyncChunkRebuild, Config::setAsyncChunkRebuild, () -> Component.translatable("brute_force_culling_revived.async"))
                 .setDetailMessage(() -> {
-                    if (ModLoader.hasNvidium()) return Component.translatable("brute_force_culling_revived.detail.nvidium");
                     if (!ModLoader.hasSodium()) return Component.translatable("brute_force_culling_revived.detail.sodium");
                     return Component.translatable("brute_force_culling_revived.detail.async");
                 });

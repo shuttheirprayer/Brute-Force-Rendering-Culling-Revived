@@ -38,6 +38,16 @@ public abstract class MixinLevelRender implements IEntitiesForRender {
         CullingStateManager.PROJECTION_MATRIX.set(p_172964_);
     }
 
+    @Inject(method = "renderLevel", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/util/profiling/ProfilerFiller;popPush(Ljava/lang/String;)V", args = "ldc=captureFrustum"))
+    private void bruteForceRenderingRevived$onCaptureFrustum(CallbackInfo ci) {
+        CullingStateManager.onProfilerPopPush("captureFrustum");
+    }
+
+    @Inject(method = "renderLevel", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/util/profiling/ProfilerFiller;popPush(Ljava/lang/String;)V", args = "ldc=destroyProgress"))
+    private void bruteForceRenderingRevived$onDestroyProgress(CallbackInfo ci) {
+        CullingStateManager.onProfilerPopPush("destroyProgress");
+    }
+
     @Override
     public ObjectArrayList<?> bruteForceRenderingRevived$renderChunksInFrustum() {
         return renderChunksInFrustum;

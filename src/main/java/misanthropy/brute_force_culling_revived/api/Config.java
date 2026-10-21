@@ -21,6 +21,8 @@ public class Config {
     private static final ForgeConfigSpec.BooleanValue CULL_ENTITY;
     private static final ForgeConfigSpec.BooleanValue CULL_BLOCK_ENTITY;
     private static final ForgeConfigSpec.BooleanValue CULL_CHUNK;
+    private static final ForgeConfigSpec.BooleanValue VEGETATION_THINNING;
+    private static final ForgeConfigSpec.IntValue VEGETATION_THINNING_START;
     private static final ForgeConfigSpec.BooleanValue TICK_CULLING;
     private static final ForgeConfigSpec.BooleanValue ASYNC;
     private static final ForgeConfigSpec.BooleanValue AUTO_DISABLE_ASYNC;
@@ -105,12 +107,16 @@ public class Config {
         CULL_CHUNK.save();
     }
 
+    public static int getVegetationThinningRange(int renderDistance) {
+        if (unload() || !VEGETATION_THINNING.get()) return -1;
+        return Math.max(2, renderDistance * VEGETATION_THINNING_START.get() / 100);
+    }
+
     private static boolean asyncAvailable() {
         return !unload()
                 && shouldCullChunk()
                 && !CullingStateManager.needPauseRebuild()
-                && ModLoader.hasSodium()
-                && !ModLoader.hasNvidium();
+                && ModLoader.hasSodium();
     }
 
     public static boolean getAsyncChunkRebuild() {
@@ -120,7 +126,7 @@ public class Config {
     }
 
     public static void setAsyncChunkRebuild(boolean value) {
-        if (!shouldCullChunk() || !ModLoader.hasSodium() || CullingStateManager.needPauseRebuild() || ModLoader.hasNvidium()) return;
+        if (!shouldCullChunk() || !ModLoader.hasSodium() || CullingStateManager.needPauseRebuild()) return;
         ASYNC.set(value);
         ASYNC.save();
     }
@@ -223,6 +229,17 @@ public class Config {
 
         builder.push("Cull chunk");
         CULL_CHUNK = builder.define("enabled", true);
+        builder.pop();
+
+        builder.push("Vegetation thinning");
+        builder.comment(
+                "Hides half of the grass, flowers and other small plants in chunks far from the camera.",
+                "Covers modded plants that extend BushBlock, are tagged as flowers, or use a plant sound with no collision.",
+                "Needs Embeddium. Crops, stems, saplings, sugar cane, vines and nether wart are never hidden.");
+        VEGETATION_THINNING = builder.define("enabled", true);
+        VEGETATION_THINNING_START = builder
+                .comment("Distance where thinning starts, as a percent of render distance.")
+                .defineInRange("start percent", 50, 10, 100);
         builder.pop();
 
         builder.push("Tick culling");

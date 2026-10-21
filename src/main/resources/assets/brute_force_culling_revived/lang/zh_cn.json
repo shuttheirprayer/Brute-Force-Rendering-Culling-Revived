@@ -33,7 +33,6 @@
   "brute_force_culling_revived.detail.culling_map_update_delay": "在剔除纹理更新到CPU之前延迟的帧数，用于防止数据未完全传输导致主线程卡顿。数值越高，剔除速度越慢。可通过观察剔除图更新时间进行调试。启用光影会减慢数据传输，并自动增加1帧延迟。",
   "brute_force_culling_revived.detail.check_texture": "测试选项，在数据监控面板开启时检查深度纹理和剔除纹理是否正常工作。",
   "brute_force_culling_revived.detail.debug": "测试选项，仅在原版Minecraft中有效，用于查看被剔除的区块。",
-  "brute_force_culling_revived.detail.nvidium": "警告：与Nvidium的Async BFS功能不兼容。",
   "brute_force_culling_revived.detail.auto_shader_async": "在部分设备上同时使用光影和异步区块重建可能会导致崩溃。此设置可在启用光影时自动关闭异步区块重建。",
   "brute_force_culling_revived.detail.sodium": "警告：需要Sodium或Embeddium。",
   "brute_force_culling_revived.detail.gl33": "警告：需要显卡支持OpenGL 3.3。",

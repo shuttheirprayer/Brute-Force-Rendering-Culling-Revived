@@ -38,7 +38,6 @@ public abstract class MixinShaderInstance implements ICullingShader {
     @Unique @Nullable private Uniform LEVEL_MIN_SECTION;
     @Unique @Nullable private Uniform CULLING_FRUSTUM;
     @Unique @Nullable private Uniform FRUSTUM_POS;
-    @Unique @Nullable private Uniform TEST_POS;
     @Unique @Nullable private Uniform CULLING_VIEW_MAT;
     @Unique @Nullable private Uniform CULLING_PROJ_MAT;
 
@@ -54,7 +53,6 @@ public abstract class MixinShaderInstance implements ICullingShader {
         this.CULLING_CAMERA_POS = this.getUniform("CullingCameraPos");
         this.CULLING_CAMERA_DIR = this.getUniform("CullingCameraDir");
         this.BOX_SCALE = this.getUniform("BoxScale");
-        this.TEST_POS = this.getUniform("TestPos");
         this.RENDER_DISTANCE = this.getUniform("RenderDistance");
         this.DEPTH_SIZE = this.getUniform("DepthSize");
         this.CULLING_SIZE = this.getUniform("CullingSize");
@@ -71,7 +69,7 @@ public abstract class MixinShaderInstance implements ICullingShader {
                         || this.RENDER_DISTANCE != null || this.DEPTH_SIZE != null || this.CULLING_SIZE != null
                         || this.ENTITY_CULLING_SIZE != null || this.LEVEL_HEIGHT_OFFSET != null
                         || this.LEVEL_MIN_SECTION != null || this.CULLING_FRUSTUM != null || this.FRUSTUM_POS != null
-                        || this.TEST_POS != null || this.CULLING_VIEW_MAT != null || this.CULLING_PROJ_MAT != null;
+                        || this.CULLING_VIEW_MAT != null || this.CULLING_PROJ_MAT != null;
     }
 
     @Override public boolean bruteForceRenderingRevived$hasCullingUniforms() { return bruteForceRenderingRevived$hasCullingUniforms; }
@@ -89,7 +87,6 @@ public abstract class MixinShaderInstance implements ICullingShader {
     @Override @Nullable public Uniform bruteForceRenderingRevived$getCullingProjMat() { return CULLING_PROJ_MAT; }
     @Override @Nullable public Uniform bruteForceRenderingRevived$getCullingCameraDir() { return CULLING_CAMERA_DIR; }
     @Override @Nullable public Uniform bruteForceRenderingRevived$getBoxScale() { return BOX_SCALE; }
-    @Override @Nullable public Uniform bruteForceRenderingRevived$getTestPos() { return TEST_POS; }
 
     @Inject(at = @At("TAIL"), method = "apply")
     public void onApply(CallbackInfo ci) {

@@ -33,7 +33,6 @@
   "brute_force_culling_revived.detail.culling_map_update_delay": "Nombre d’images de retard avant que la texture de culling soit mise à jour sur le CPU. Cela évite les saccades dues à une transmission de données incomplète. Plus la valeur est élevée, plus le culling est lent. Vous pouvez observer le temps de mise à jour pour le débogage. Avec les shaders activés, la transmission des données est ralentie et le délai augmente automatiquement d’une image.",
   "brute_force_culling_revived.detail.check_texture": "Option de test. Permet de vérifier si les textures de profondeur et de culling fonctionnent correctement lorsque le panneau de surveillance est ouvert.",
   "brute_force_culling_revived.detail.debug": "Option de test. Fonctionne uniquement dans Minecraft vanilla et montre quels chunks ont été supprimés par culling.",
-  "brute_force_culling_revived.detail.nvidium": "Avertissement : incompatible avec la fonction Async BFS du mod Nvidium.",
   "brute_force_culling_revived.detail.auto_shader_async": "Sur certains appareils, l’utilisation simultanée des shaders et de la reconstruction asynchrone des chunks peut provoquer des plantages. Cette option désactive automatiquement la reconstruction asynchrone lorsque les shaders sont activés.",
   "brute_force_culling_revived.detail.sodium": "Avertissement : nécessite Sodium ou Embeddium.",
   "brute_force_culling_revived.detail.gl33": "Avertissement : nécessite la prise en charge d’OpenGL 3.3.",

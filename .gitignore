@@ -1,25 +1,53 @@
-# eclipse
-bin
+﻿bin
 *.launch
 .settings
 .metadata
 .classpath
 .project
 
-# idea
 out
 *.ipr
 *.iws
 *.iml
 .idea
 
-# gradle
 build
 .gradle
 
-# other
 eclipse
 run
 
-# Files from Forge MDK
 forge*changelog.txt
+.gradle/
+build/
+out/
+bin/
+classes/
+.mixin.out/
+run/
+run-data/
+runs/
+run-*/
+logs/
+*.log
+*.hprof
+*.args
+hs_err_pid*
+crash-reports/
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+.metadata/
+.kotlin/
+.DS_Store
+Thumbs.db
+desktop.ini
+curseforge/
+*.zip
+gradlew
+gradlew.bat

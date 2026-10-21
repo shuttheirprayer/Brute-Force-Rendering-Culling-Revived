@@ -4,10 +4,8 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import misanthropy.brute_force_culling_revived.api.data.ChunkCullingMap;
-import misanthropy.brute_force_culling_revived.api.impl.IAABBObject;
 import misanthropy.brute_force_culling_revived.gui.ConfigScreen;
 import misanthropy.brute_force_culling_revived.util.Benchmark;
-import misanthropy.brute_force_culling_revived.util.NvidiumUtil;
 import misanthropy.brute_force_culling_revived.util.OcclusionCullerThread;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -42,7 +40,6 @@ import java.lang.reflect.Field;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static java.lang.Thread.MAX_PRIORITY;
 import static misanthropy.brute_force_culling_revived.api.CullingStateManager.*;
 
 @Mod("brute_force_culling_revived")
@@ -167,8 +164,6 @@ public class ModLoader {
                 updateLevelBounds(mc.level);
 
                 OcclusionCullerThread occlusionCullerThread = new OcclusionCullerThread();
-                occlusionCullerThread.setName("Chunk Depth Occlusion Cull thread");
-                occlusionCullerThread.setPriority(MAX_PRIORITY);
                 occlusionCullerThread.start();
             }
             Config.setLoaded();
@@ -203,14 +198,9 @@ public class ModLoader {
         return hasMod("iris") || hasMod("oculus");
     }
 
-    public static boolean hasNvidium() {
-        return hasMod("nvidium") && NvidiumUtil.nvidiumBfs();
-    }
-
     public static @Nullable AABB getObjectAABB(Object o) {
         if (o instanceof BlockEntity be)   return be.getRenderBoundingBox();
         if (o instanceof Entity e)         return e.getBoundingBox();
-        if (o instanceof IAABBObject aabb) return aabb.getAABB();
         return null;
     }
 

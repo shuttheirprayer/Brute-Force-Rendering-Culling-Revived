@@ -33,7 +33,6 @@
   "brute_force_culling_revived.detail.culling_map_update_delay": "Anzahl der Frames, die verzögert werden, bevor die Culling-Textur auf der CPU aktualisiert wird. Dies verhindert Ruckler durch unvollständige Datenübertragung. Je höher der Wert, desto langsamer das Culling. Zur Fehleranalyse kann die Aktualisierungszeit beobachtet werden. Mit aktivierten Shadern wird die Datenübertragung langsamer und die Verzögerung automatisch um 1 Frame erhöht.",
   "brute_force_culling_revived.detail.check_texture": "Testoption. Ermöglicht die Überprüfung, ob Tiefen- und Culling-Texturen korrekt funktionieren, wenn das Monitoring-Panel geöffnet ist.",
   "brute_force_culling_revived.detail.debug": "Testoption. Funktioniert nur im Vanilla-Minecraft und zeigt, welche Chunks durch Culling entfernt wurden.",
-  "brute_force_culling_revived.detail.nvidium": "Warnung: Nicht kompatibel mit der Async BFS-Funktion von Nvidium.",
   "brute_force_culling_revived.detail.auto_shader_async": "Auf manchen Geräten kann die gleichzeitige Nutzung von Shadern und asynchroner Chunk-Neuberechnung Abstürze verursachen. Diese Einstellung deaktiviert die asynchrone Neuberechnung automatisch, wenn Shader aktiviert sind.",
   "brute_force_culling_revived.detail.sodium": "Warnung: Erfordert Sodium oder Embeddium.",
   "brute_force_culling_revived.detail.gl33": "Warnung: OpenGL 3.3-Unterstützung erforderlich.",

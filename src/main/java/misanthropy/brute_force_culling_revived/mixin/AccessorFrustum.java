@@ -2,9 +2,9 @@ package misanthropy.brute_force_culling_revived.mixin;
 
 import net.minecraft.client.renderer.culling.Frustum;
 import org.joml.FrustumIntersection;
-import org.joml.Vector4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
+import org.spongepowered.asm.mixin.gen.Invoker;
 
 @SuppressWarnings("unused")
 @Mixin(Frustum.class)
@@ -21,9 +21,6 @@ public interface AccessorFrustum {
     @Accessor("intersection")
     FrustumIntersection frustumIntersection();
 
-    @Mixin(FrustumIntersection.class)
-    interface AccessorFrustumIntersection {
-        @Accessor(value = "planes", remap = false)
-        Vector4f[] planes();
-    }
+    @Invoker("cubeInFrustum")
+    boolean invokeCubeInFrustum(double minX, double minY, double minZ, double maxX, double maxY, double maxZ);
 }

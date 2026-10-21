@@ -3,6 +3,7 @@ package misanthropy.brute_force_culling_revived.mixin;
 import misanthropy.brute_force_culling_revived.api.CullingStateManager;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,6 +20,11 @@ public abstract class MixinClientLevel {
 
         CullingStateManager.tickCulling++;
         entity.setOldPosAndRot();
+        if (entity instanceof LivingEntity && ((AccessorLivingEntity) entity).getLerpSteps() > 0) {
+            AccessorLivingEntity lerp = (AccessorLivingEntity) entity;
+            entity.setPos(lerp.getLerpX(), lerp.getLerpY(), lerp.getLerpZ());
+            lerp.setLerpSteps(0);
+        }
         ++entity.tickCount;
         ci.cancel();
     }
