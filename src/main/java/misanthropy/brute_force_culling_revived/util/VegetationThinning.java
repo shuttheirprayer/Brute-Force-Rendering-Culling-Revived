@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class VegetationThinning {
     private record State(int cameraX, int cameraZ, int rangeSq) {}
@@ -30,6 +31,7 @@ public final class VegetationThinning {
             SoundType.ROOTS, SoundType.NETHER_SPROUTS, SoundType.PINK_PETALS);
 
     private static volatile State state = new State(0, 0, -1);
+    private static final ConcurrentHashMap<BlockState, Boolean> VEGETATION = new ConcurrentHashMap<>();
 
     private VegetationThinning() {
     }
@@ -50,7 +52,19 @@ public final class VegetationThinning {
         return dx * dx + dz * dz > s.rangeSq;
     }
 
+    public static void forgetVegetation() {
+        VEGETATION.clear();
+    }
+
     public static boolean isVegetation(BlockState blockState) {
+        Boolean known = VEGETATION.get(blockState);
+        if (known != null) return known;
+        boolean vegetation = classify(blockState);
+        VEGETATION.put(blockState, vegetation);
+        return vegetation;
+    }
+
+    private static boolean classify(BlockState blockState) {
         Block block = blockState.getBlock();
         if (block instanceof CropBlock || block instanceof StemBlock || block instanceof SaplingBlock
                 || block instanceof NetherWartBlock || block instanceof SugarCaneBlock

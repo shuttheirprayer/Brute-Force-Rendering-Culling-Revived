@@ -1,7 +1,5 @@
 package misanthropy.brute_force_culling_revived.mixin.sodium;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import me.jellysquid.mods.sodium.client.render.chunk.RenderSection;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.ChunkBuildBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.ChunkBuildContext;
@@ -17,6 +15,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -38,17 +37,17 @@ public abstract class MixinChunkBuilderMeshingTask {
         bruteForceRenderingRevived$sawVegetation = false;
     }
 
-    @WrapOperation(
+    @Redirect(
             method = "execute(Lme/jellysquid/mods/sodium/client/render/chunk/compile/ChunkBuildContext;Lme/jellysquid/mods/sodium/client/util/task/CancellationToken;)Lme/jellysquid/mods/sodium/client/render/chunk/compile/ChunkBuildOutput;",
             at = @At(value = "INVOKE", target = "Lme/jellysquid/mods/sodium/client/render/chunk/compile/pipeline/BlockRenderer;renderModel(Lme/jellysquid/mods/sodium/client/render/chunk/compile/pipeline/BlockRenderContext;Lme/jellysquid/mods/sodium/client/render/chunk/compile/ChunkBuildBuffers;)V"),
             remap = false
     )
-    private void bruteForceRenderingRevived$thinVegetation(BlockRenderer renderer, BlockRenderContext ctx, ChunkBuildBuffers buffers, Operation<Void> original) {
+    private void bruteForceRenderingRevived$thinVegetation(BlockRenderer renderer, BlockRenderContext ctx, ChunkBuildBuffers buffers) {
         if ((bruteForceRenderingRevived$thin || !bruteForceRenderingRevived$sawVegetation) && VegetationThinning.isVegetation(ctx.state())) {
             bruteForceRenderingRevived$sawVegetation = true;
             if (bruteForceRenderingRevived$thin && VegetationThinning.isHidden(ctx.state(), ctx.pos())) return;
         }
-        original.call(renderer, ctx, buffers);
+        renderer.renderModel(ctx, buffers);
     }
 
     @Inject(method = "execute(Lme/jellysquid/mods/sodium/client/render/chunk/compile/ChunkBuildContext;Lme/jellysquid/mods/sodium/client/util/task/CancellationToken;)Lme/jellysquid/mods/sodium/client/render/chunk/compile/ChunkBuildOutput;", at = @At("RETURN"), remap = false)

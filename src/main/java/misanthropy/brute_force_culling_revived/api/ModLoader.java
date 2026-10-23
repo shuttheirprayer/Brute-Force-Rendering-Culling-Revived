@@ -1,5 +1,7 @@
 package misanthropy.brute_force_culling_revived.api;
 
+import net.minecraftforge.event.TagsUpdatedEvent;
+import misanthropy.brute_force_culling_revived.util.VegetationThinning;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
@@ -107,6 +109,11 @@ public class ModLoader {
             REMOVE_COLOR_SHADER = null;
             LOGGER.error("Failed to init culling shaders, culling disabled for this session", t);
         }
+    }
+
+    @SubscribeEvent
+    public void onTagsUpdated(TagsUpdatedEvent event) {
+        VegetationThinning.forgetVegetation();
     }
 
     @SubscribeEvent
