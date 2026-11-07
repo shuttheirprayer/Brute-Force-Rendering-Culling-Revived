@@ -39,9 +39,25 @@ public class Config {
     private static final Map<BlockEntityType<?>, Boolean> BLOCK_ENTITY_SKIP_CACHE = new ConcurrentHashMap<>();
 
     private static volatile boolean loaded = false;
+    private static volatile boolean cullEntity;
+    private static volatile boolean cullBlockEntity;
+    private static volatile boolean cullChunk;
+    private static volatile boolean tickCulling;
+    private static volatile boolean async;
+    private static volatile boolean autoDisableAsync;
 
     public static void setLoaded() {
+        refresh();
         if (!loaded) loaded = true;
+    }
+
+    public static void refresh() {
+        cullEntity = CULL_ENTITY.get();
+        cullBlockEntity = CULL_BLOCK_ENTITY.get();
+        cullChunk = CULL_CHUNK.get();
+        tickCulling = TICK_CULLING.get();
+        async = ASYNC.get();
+        autoDisableAsync = AUTO_DISABLE_ASYNC.get();
     }
 
     private static boolean unload() {
@@ -62,49 +78,53 @@ public class Config {
     }
 
     public static boolean doEntityCulling() {
-        return !cullingOff() && CullingStateManager.gl33() && (CULL_ENTITY.get() || CULL_BLOCK_ENTITY.get());
+        return !cullingOff() && CullingStateManager.gl33() && (cullEntity || cullBlockEntity);
     }
 
     public static boolean getCullEntity() {
-        return !cullingOff() && CullingStateManager.gl33() && CULL_ENTITY.get();
+        return !cullingOff() && CullingStateManager.gl33() && cullEntity;
     }
 
     public static void setCullEntity(boolean value) {
         CULL_ENTITY.set(value);
         CULL_ENTITY.save();
+        refresh();
     }
 
     public static boolean getCullBlockEntity() {
-        return !cullingOff() && CullingStateManager.gl33() && CULL_BLOCK_ENTITY.get();
+        return !cullingOff() && CullingStateManager.gl33() && cullBlockEntity;
     }
 
     public static void setCullBlockEntity(boolean value) {
         CULL_BLOCK_ENTITY.set(value);
         CULL_BLOCK_ENTITY.save();
+        refresh();
     }
 
     public static boolean getTickCulling() {
-        return !cullingOff() && TICK_CULLING.get();
+        return !cullingOff() && tickCulling;
     }
 
     public static void setTickCulling(boolean value) {
         TICK_CULLING.set(value);
         TICK_CULLING.save();
+        refresh();
     }
 
     public static boolean getCullChunk() {
-        return !cullingOff() && CULL_CHUNK.get();
+        return !cullingOff() && cullChunk;
     }
 
     public static boolean shouldCullChunk() {
         if (cullingOff()) return false;
         ChunkCullingMap chunkCullingMap = CullingStateManager.CHUNK_CULLING_MAP;
-        return chunkCullingMap != null && chunkCullingMap.isDone() && CULL_CHUNK.get();
+        return chunkCullingMap != null && chunkCullingMap.isDone() && cullChunk;
     }
 
     public static void setCullChunk(boolean value) {
         CULL_CHUNK.set(value);
         CULL_CHUNK.save();
+        refresh();
     }
 
     public static int getVegetationThinningRange(int renderDistance) {
@@ -122,22 +142,24 @@ public class Config {
     public static boolean getAsyncChunkRebuild() {
         if (!asyncAvailable()) return false;
         if (getAutoDisableAsync() && CullingStateManager.enabledShader()) return false;
-        return ASYNC.get();
+        return async;
     }
 
     public static void setAsyncChunkRebuild(boolean value) {
         if (!shouldCullChunk() || !ModLoader.hasSodium() || CullingStateManager.needPauseRebuild()) return;
         ASYNC.set(value);
         ASYNC.save();
+        refresh();
     }
 
     public static boolean getAutoDisableAsync() {
-        return !unload() && AUTO_DISABLE_ASYNC.get();
+        return !unload() && autoDisableAsync;
     }
 
     public static void setAutoDisableAsync(boolean value) {
         AUTO_DISABLE_ASYNC.set(value);
         AUTO_DISABLE_ASYNC.save();
+        refresh();
     }
 
     public static int getShaderDynamicDelay() {

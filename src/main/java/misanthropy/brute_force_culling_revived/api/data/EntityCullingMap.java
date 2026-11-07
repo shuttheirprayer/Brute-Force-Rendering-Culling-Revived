@@ -1,5 +1,6 @@
 package misanthropy.brute_force_culling_revived.api.data;
 
+import misanthropy.brute_force_culling_revived.util.UsageStamp;
 import misanthropy.brute_force_culling_revived.api.Config;
 import misanthropy.brute_force_culling_revived.api.CullingStateManager;
 import misanthropy.brute_force_culling_revived.api.ModLoader;
@@ -44,7 +45,13 @@ public class EntityCullingMap extends CullingMap {
             return true;
         }
 
-        entityMap.tempObjectTimer.refreshIfPresent(o, CullingStateManager.clientTickCount);
+        int tick = CullingStateManager.clientTickCount;
+        if (!CullingStateManager.stampUsage || !(o instanceof UsageStamp stamp)) {
+            entityMap.tempObjectTimer.refreshIfPresent(o, tick);
+        } else if (stamp.bfr$refreshStamp() != tick) {
+            stamp.bfr$refreshStamp(tick);
+            entityMap.tempObjectTimer.refreshIfPresent(o, tick);
+        }
 
         return isSlotVisible(idx);
     }

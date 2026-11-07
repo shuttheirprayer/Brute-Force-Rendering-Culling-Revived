@@ -1,5 +1,7 @@
 package misanthropy.brute_force_culling_revived.api;
 
+import misanthropy.brute_force_culling_revived.util.UsageStamp;
+
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.GlStateManager;
@@ -84,6 +86,7 @@ public class CullingStateManager {
     public static int fps = 0;
     private static int tick = 0;
     public static int clientTickCount = 0;
+    public static boolean stampUsage = true;
     public static int entityCulling = 0;
     public static int entityCount = 0;
     public static int blockCulling = 0;
@@ -261,7 +264,11 @@ public class CullingStateManager {
         if (!visible) {
             blockCulling++;
         } else if (actualVisible) {
-            visibleBlock.updateUsageTick(pos, clientTickCount);
+            UsageStamp stamp = (UsageStamp) blockEntity;
+            if (!stampUsage || stamp.bfr$usageStamp() != clientTickCount) {
+                stamp.bfr$usageStamp(clientTickCount);
+                visibleBlock.updateUsageTick(pos, clientTickCount);
+            }
         }
 
         return !visible;
@@ -291,7 +298,11 @@ public class CullingStateManager {
         if (!visible) {
             entityCulling++;
         } else if (actualVisible) {
-            visibleEntity.updateUsageTick(entity, clientTickCount);
+            UsageStamp stamp = (UsageStamp) entity;
+            if (!stampUsage || stamp.bfr$usageStamp() != clientTickCount) {
+                stamp.bfr$usageStamp(clientTickCount);
+                visibleEntity.updateUsageTick(entity, clientTickCount);
+            }
         }
 
         return !visible;

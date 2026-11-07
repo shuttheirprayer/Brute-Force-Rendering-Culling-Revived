@@ -87,6 +87,7 @@ public class ModLoader {
 
     private void onConfigChanged(final ModConfigEvent event) {
         Config.clearTypeSkipCaches();
+        Config.refresh();
     }
 
     private void registerShader() {

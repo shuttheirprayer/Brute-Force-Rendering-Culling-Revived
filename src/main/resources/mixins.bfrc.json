@@ -14,6 +14,8 @@
     "AccessorLivingEntity",
     "AccessorMinecraft",
     "MixinBlockEntityRender",
+    "MixinBlockEntityUsageStamp",
+    "MixinEntityUsageStamp",
     "MixinClientLevel",
     "MixinEntityRender",
     "MixinFrustum",
