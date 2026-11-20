@@ -1,6 +1,8 @@
-package misanthropy.brute_force_culling_revived.mixin.sodium;
+    package misanthropy.brute_force_culling_revived.mixin.sodium;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceMap;
 import me.jellysquid.mods.sodium.client.gl.device.CommandList;
@@ -9,6 +11,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.RenderSection;
 import me.jellysquid.mods.sodium.client.render.chunk.RenderSectionManager;
 import me.jellysquid.mods.sodium.client.render.chunk.lists.SortedRenderLists;
 import me.jellysquid.mods.sodium.client.render.chunk.lists.VisibleChunkCollector;
+import me.jellysquid.mods.sodium.client.render.chunk.occlusion.OcclusionCuller;
 import me.jellysquid.mods.sodium.client.render.viewport.Viewport;
 import misanthropy.brute_force_culling_revived.api.Config;
 import misanthropy.brute_force_culling_revived.api.CullingStateManager;
@@ -94,6 +97,18 @@ public abstract class MixinRenderSectionManager {
         if (!Config.getAsyncChunkRebuild()) return visitor;
         VisibleChunkCollector collector = SodiumSectionAsyncUtil.getActiveCollector();
         return collector == null ? visitor : collector;
+    }
+
+    @WrapOperation(
+            method = "createTerrainRenderList",
+            at = @At(value = "INVOKE", target = "Lme/jellysquid/mods/sodium/client/render/chunk/occlusion/OcclusionCuller;findVisible(Lme/jellysquid/mods/sodium/client/render/chunk/occlusion/OcclusionCuller$Visitor;Lme/jellysquid/mods/sodium/client/render/viewport/Viewport;FZI)V"),
+            remap = false
+    )
+    private void serializeFindVisible(OcclusionCuller culler, OcclusionCuller.Visitor visitor, Viewport viewport, float searchDistance, boolean useOcclusionCulling, int frame, Operation<Void> original) {
+        if (Config.getAsyncChunkRebuild()) return;
+        synchronized (SodiumSectionAsyncUtil.TRAVERSAL_LOCK) {
+            original.call(culler, visitor, viewport, searchDistance, useOcclusionCulling, frame);
+        }
     }
 
     @Inject(method = "updateChunks", at = @At(value = "HEAD"), remap = false)

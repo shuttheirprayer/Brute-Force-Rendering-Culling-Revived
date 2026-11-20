@@ -31,6 +31,7 @@ public class SodiumSectionAsyncUtil {
     private static @Nullable VisibleChunkCollector shadowCollector;
 
     private static final Object LOCK = new Object();
+    public static final Object TRAVERSAL_LOCK = new Object();
     private static volatile int generation = 0;
 
     public static boolean renderingEntities;
@@ -86,7 +87,9 @@ public class SodiumSectionAsyncUtil {
             CullingStateManager.useOcclusionCulling = false;
             try {
                 sColl = new AsynchronousChunkCollector(frame);
-                culler.findVisible(sColl, localShadowViewport, localShadowSearchDistance, localShadowUseOcclusionCulling, frame);
+                synchronized (TRAVERSAL_LOCK) {
+                    culler.findVisible(sColl, localShadowViewport, localShadowSearchDistance, localShadowUseOcclusionCulling, frame);
+                }
             } finally {
                 CullingStateManager.useOcclusionCulling = true;
             }
@@ -100,7 +103,9 @@ public class SodiumSectionAsyncUtil {
             mainColl = CullingStateManager.checkCulling ?
                     new DebugChunkCollector(frame) : new AsynchronousChunkCollector(frame);
 
-            culler.findVisible(mainColl, localViewport, localSearchDistance, localUseOcclusionCulling, frame);
+            synchronized (TRAVERSAL_LOCK) {
+                culler.findVisible(mainColl, localViewport, localSearchDistance, localUseOcclusionCulling, frame);
+            }
 
             Map<ChunkUpdateType, ArrayDeque<RenderSection>> rebuildList = mainColl.getRebuildLists();
             for (ArrayDeque<RenderSection> queue : rebuildList.values()) {
