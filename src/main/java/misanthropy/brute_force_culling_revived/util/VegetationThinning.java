@@ -36,12 +36,26 @@ public final class VegetationThinning {
     private VegetationThinning() {
     }
 
-    public static boolean update(int cameraSectionX, int cameraSectionZ, int renderDistance) {
+    public static final int UNCHANGED = 0;
+    public static final int STEP = 1;
+    public static final int FULL = 2;
+
+    public static int update(int cameraSectionX, int cameraSectionZ, int renderDistance) {
         int range = Config.getVegetationThinningRange(renderDistance);
         State next = new State(cameraSectionX, cameraSectionZ, range < 0 ? -1 : range * range);
-        if (next.equals(state)) return false;
+        State previous = state;
+        if (next.equals(previous)) return UNCHANGED;
         state = next;
-        return true;
+        if (next.rangeSq == previous.rangeSq && next.rangeSq >= 0
+                && Math.abs(next.cameraX - previous.cameraX) <= 1 && Math.abs(next.cameraZ - previous.cameraZ) <= 1) {
+            return STEP;
+        }
+        return FULL;
+    }
+
+    public static int range() {
+        State s = state;
+        return s.rangeSq < 0 ? -1 : (int) Math.ceil(Math.sqrt(s.rangeSq));
     }
 
     public static boolean isFar(int sectionX, int sectionZ) {

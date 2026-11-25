@@ -145,29 +145,17 @@ void main() {
     float minY = 1.1;
 
     bool inside = false;
-    vec3 column0 = CullingViewMat[0].xyz;
-    vec3 column1 = CullingViewMat[1].xyz;
-    vec3 column2 = CullingViewMat[2].xyz;
-
-    vec3 cameraUp = vec3(column0.y, column1.y, column2.y);
-    vec3 cameraRight = vec3(column0.x, column1.x, column2.x);
+    bool cut = false;
 
     for (int i = 0; i < 8; ++i) {
         vec3 screenPos = worldToScreenSpace(aabb[i]);
-        if (screenPos.x >= 0.0 && screenPos.x <= 1.0
-        && screenPos.y >= 0.0 && screenPos.y <= 1.0
-        && screenPos.z >= 0.0 && screenPos.z <= 1.0) {
-            inside = true;
+        if (screenPos.x < 0.0 || screenPos.x > 1.0
+        || screenPos.y < 0.0 || screenPos.y > 1.0
+        || screenPos.z < 0.0 || screenPos.z > 1.0) {
+            cut = true;
+            screenPos.xy = clamp(screenPos.xy, 0.0, 1.0);
         } else {
-            vec3 vectorDir = normalize(aabb[i] - CullingCameraPos);
-
-            float xDot = dot(vectorDir, cameraRight);
-            if (xDot < 0.0 && screenPos.x > 0.5) screenPos.x = 0.0;
-            if (xDot > 0.0 && screenPos.x < 0.5) screenPos.x = 1.0;
-
-            float yDot = dot(vectorDir, cameraUp);
-            if (yDot < 0.0 && screenPos.y > 0.5) screenPos.y = 0.0;
-            if (yDot > 0.0 && screenPos.y < 0.5) screenPos.y = 1.0;
+            inside = true;
         }
 
         if (screenPos.x > maxX) maxX = screenPos.x;
@@ -176,7 +164,7 @@ void main() {
         if (screenPos.y < minY) minY = screenPos.y;
     }
 
-    if(!inside) {
+    if (!inside || cut && calculateDistance(chunkPos, CullingCameraPos) < 65536.0) {
         fragColor = vec4(1.0, 1.0, 0.0, 1.0);
         return;
     }

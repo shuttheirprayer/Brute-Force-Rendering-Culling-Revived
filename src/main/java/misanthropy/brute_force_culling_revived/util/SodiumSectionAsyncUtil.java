@@ -3,25 +3,38 @@ package misanthropy.brute_force_culling_revived.util;
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceMap;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkUpdateType;
+import me.jellysquid.mods.sodium.client.render.chunk.LocalSectionIndex;
 import me.jellysquid.mods.sodium.client.render.chunk.RenderSection;
 import me.jellysquid.mods.sodium.client.render.chunk.lists.ChunkRenderList;
+import me.jellysquid.mods.sodium.client.render.chunk.lists.SortedRenderLists;
 import me.jellysquid.mods.sodium.client.render.chunk.lists.VisibleChunkCollector;
 import me.jellysquid.mods.sodium.client.render.chunk.occlusion.OcclusionCuller;
 import me.jellysquid.mods.sodium.client.render.chunk.region.RenderRegion;
+import me.jellysquid.mods.sodium.client.render.viewport.CameraTransform;
 import me.jellysquid.mods.sodium.client.render.viewport.Viewport;
 import misanthropy.brute_force_culling_revived.api.CullingStateManager;
 import misanthropy.brute_force_culling_revived.api.impl.ICollectorAccessor;
 import misanthropy.brute_force_culling_revived.api.impl.IRenderSectionVisibility;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 import java.util.*;
 
 public class SodiumSectionAsyncUtil {
+    private static final int AROUND_INTERVAL = 4;
+    private static final float AROUND_DISTANCE = 64.0F;
+
     private static int frame = 0;
     private static OcclusionCuller occlusionCuller;
     private static Viewport viewport;
+    private static final float REUSE_TURN = 0.04F;
+    private static final float REUSE_BLOCKS = 1.0F;
+    private static Viewport exactViewport;
+    private static final Vector3f LOOK = new Vector3f();
+    private static int searches;
     private static float searchDistance;
     private static boolean useOcclusionCulling;
     private static Viewport shadowViewport;
@@ -49,6 +62,7 @@ public class SodiumSectionAsyncUtil {
             collector = null;
             shadowCollector = null;
             viewport = null;
+            exactViewport = null;
             shadowViewport = null;
             occlusionCuller = null;
             needSyncRebuild = false;
@@ -86,7 +100,7 @@ public class SodiumSectionAsyncUtil {
             frame++;
             CullingStateManager.useOcclusionCulling = false;
             try {
-                sColl = new AsynchronousChunkCollector(frame);
+                sColl = new AsynchronousChunkCollector(frame, false);
                 synchronized (TRAVERSAL_LOCK) {
                     culler.findVisible(sColl, localShadowViewport, localShadowSearchDistance, localShadowUseOcclusionCulling, frame);
                 }
@@ -99,21 +113,25 @@ public class SodiumSectionAsyncUtil {
         boolean localNeedSyncRebuild = false;
 
         if (localViewport != null) {
-            frame++;
             mainColl = CullingStateManager.checkCulling ?
-                    new DebugChunkCollector(frame) : new AsynchronousChunkCollector(frame);
+                    new DebugChunkCollector(frame) : new AsynchronousChunkCollector(frame, true);
+
+            if (++searches % AROUND_INTERVAL == 0) {
+                frame++;
+                ICollectorAccessor target = (ICollectorAccessor) mainColl;
+                Viewport around = new Viewport((minX, minY, minZ, maxX, maxY, maxZ) -> true, TurnMargin.position(localViewport));
+                synchronized (TRAVERSAL_LOCK) {
+                    culler.findVisible((section, visible) -> target.bruteForceRenderingRevived$addAsyncToRebuildLists(section),
+                            around, Math.min(localSearchDistance, AROUND_DISTANCE), localUseOcclusionCulling, frame);
+                }
+            }
 
             synchronized (TRAVERSAL_LOCK) {
+                frame++;
                 culler.findVisible(mainColl, localViewport, localSearchDistance, localUseOcclusionCulling, frame);
             }
 
-            Map<ChunkUpdateType, ArrayDeque<RenderSection>> rebuildList = mainColl.getRebuildLists();
-            for (ArrayDeque<RenderSection> queue : rebuildList.values()) {
-                if (!queue.isEmpty()) {
-                    localNeedSyncRebuild = true;
-                    break;
-                }
-            }
+            localNeedSyncRebuild = hasWork(mainColl);
         }
 
         synchronized (LOCK) {
@@ -123,6 +141,15 @@ public class SodiumSectionAsyncUtil {
                 SodiumSectionAsyncUtil.needSyncRebuild = localNeedSyncRebuild;
             }
         }
+    }
+
+    private static boolean hasWork(VisibleChunkCollector collector) {
+        for (ArrayDeque<RenderSection> queue : collector.getRebuildLists().values()) {
+            if (!queue.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void pauseAsync() {
@@ -139,7 +166,9 @@ public class SodiumSectionAsyncUtil {
                 SodiumSectionAsyncUtil.shadowSearchDistance = dist;
                 SodiumSectionAsyncUtil.shadowUseOcclusionCulling = culling;
             } else {
-                SodiumSectionAsyncUtil.viewport = viewport;
+                SodiumSectionAsyncUtil.exactViewport = TurnMargin.exact(viewport);
+                LOOK.set(Minecraft.getInstance().gameRenderer.getMainCamera().getLookVector());
+                SodiumSectionAsyncUtil.viewport = TurnMargin.widen(exactViewport, LOOK);
                 SodiumSectionAsyncUtil.searchDistance = dist;
                 SodiumSectionAsyncUtil.useOcclusionCulling = culling;
             }
@@ -179,7 +208,9 @@ public class SodiumSectionAsyncUtil {
     }
 
     public static class AsynchronousChunkCollector extends VisibleChunkCollector {
-        private final Map<RenderRegion, ChunkRenderList> renderListMap = new HashMap<>();
+        private final Map<RenderRegion, RegionSections> regions = new HashMap<>();
+        private final List<RegionSections> regionOrder = new ArrayList<>();
+        private final boolean trim;
         private final EnumMap<ChunkUpdateType, ArrayDeque<RenderSection>> syncRebuildLists;
         private static final ChunkUpdateType[] UPDATE_TYPES = ChunkUpdateType.values();
         private static final EnumMap<ChunkUpdateType, ArrayDeque<RenderSection>> EMPTY_LIST = new EnumMap<>(ChunkUpdateType.class);
@@ -191,9 +222,12 @@ public class SodiumSectionAsyncUtil {
         }
 
         private boolean sent;
+        private @Nullable CameraTransform trimmedAt;
+        private final Vector3f trimmedLook = new Vector3f();
 
-        public AsynchronousChunkCollector(int frame) {
+        public AsynchronousChunkCollector(int frame, boolean trim) {
             super(frame);
+            this.trim = trim;
             this.syncRebuildLists = new EnumMap<>(ChunkUpdateType.class);
             for (ChunkUpdateType type : UPDATE_TYPES) {
                 this.syncRebuildLists.put(type, new ArrayDeque<>());
@@ -202,10 +236,95 @@ public class SodiumSectionAsyncUtil {
 
         @Override
         public void visit(@NotNull RenderSection section, boolean visible) {
-            if (visible && section.getFlags() != 0) {
-                regionList(renderListMap, this, section.getRegion()).add(section);
+            if (visible && (section.getFlags() != 0 || section.getPendingUpdate() != null || section.getBuildCancellationToken() != null)) {
+                RenderRegion region = section.getRegion();
+                RegionSections group = regions.get(region);
+                if (group == null) {
+                    group = new RegionSections(region);
+                    regions.put(region, group);
+                    regionOrder.add(group);
+                }
+                group.add(section);
             }
             ((ICollectorAccessor) this).bruteForceRenderingRevived$addAsyncToRebuildLists(section);
+        }
+
+        @Override
+        public SortedRenderLists createRenderLists() {
+            Viewport exact = trim ? exactViewport : null;
+            if (exact != null) {
+                CameraTransform camera = exact.getTransform();
+                if (trimmedAt != null && trimmedLook.distanceSquared(LOOK) < REUSE_TURN * REUSE_TURN && within(camera, trimmedAt)) {
+                    return super.createRenderLists();
+                }
+                trimmedAt = camera;
+                trimmedLook.set(LOOK);
+                exact = TurnMargin.wide(exact, REUSE_TURN * 1.5F, REUSE_BLOCKS);
+            }
+            ICollectorAccessor lists = (ICollectorAccessor) this;
+            lists.bruteForceRenderingRevived$clearRenderLists();
+            for (int r = 0, regionCount = regionOrder.size(); r < regionCount; r++) {
+                ChunkRenderList list = regionOrder.get(r).visible(exact);
+                if (list.size() > 0) {
+                    lists.bruteForceRenderingRevived$addRenderList(list);
+                }
+            }
+            return super.createRenderLists();
+        }
+
+        private static boolean within(CameraTransform a, CameraTransform b) {
+            double x = a.x - b.x;
+            double y = a.y - b.y;
+            double z = a.z - b.z;
+            return x * x + y * y + z * z < REUSE_BLOCKS * REUSE_BLOCKS;
+        }
+
+        private static final class RegionSections {
+            private static final float EDGE = 1.125F;
+            private static final float SECTION = 8.0F + EDGE;
+
+            private final RenderRegion region;
+            private final ChunkRenderList list;
+            private byte[] indices = new byte[64];
+            private int count;
+
+            private RegionSections(RenderRegion region) {
+                this.region = region;
+                this.list = new ChunkRenderList(region);
+            }
+
+            private void add(RenderSection section) {
+                if (this.count == this.indices.length) {
+                    this.indices = Arrays.copyOf(this.indices, RenderRegion.REGION_SIZE);
+                }
+                this.indices[this.count++] = (byte) section.getSectionIndex();
+            }
+
+            private ChunkRenderList visible(@Nullable Viewport exact) {
+                ChunkRenderList list = this.list;
+                list.reset(0);
+                RenderRegion region = this.region;
+                if (exact != null && !exact.isBoxVisible(region.getCenterX(), region.getCenterY(), region.getCenterZ(),
+                        RenderRegion.REGION_WIDTH * 8.0F + EDGE, RenderRegion.REGION_HEIGHT * 8.0F + EDGE, RenderRegion.REGION_LENGTH * 8.0F + EDGE)) {
+                    return list;
+                }
+                int x = region.getOriginX() + 8;
+                int y = region.getOriginY() + 8;
+                int z = region.getOriginZ() + 8;
+                byte[] indices = this.indices;
+                for (int i = 0, count = this.count; i < count; i++) {
+                    int index = indices[i] & 0xFF;
+                    if (exact != null && !exact.isBoxVisible(x + (LocalSectionIndex.unpackX(index) << 4),
+                            y + (LocalSectionIndex.unpackY(index) << 4), z + (LocalSectionIndex.unpackZ(index) << 4), SECTION)) {
+                        continue;
+                    }
+                    RenderSection section = region.getSection(index);
+                    if (section != null && section.getFlags() != 0 && !section.isDisposed()) {
+                        list.add(section);
+                    }
+                }
+                return list;
+            }
         }
 
         @Override

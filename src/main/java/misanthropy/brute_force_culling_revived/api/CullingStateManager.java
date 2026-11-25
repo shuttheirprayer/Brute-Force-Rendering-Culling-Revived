@@ -353,9 +353,6 @@ public class CullingStateManager {
                         ? levelFrustum.getCapturedFrustum()
                         : levelFrustum.getCullingFrustum();
                 CullingStateManager.FRUSTUM = new Frustum(frustum).offsetToFullyIncludeCameraCube(32);
-
-                ChunkCullingMap chunkMap = CullingStateManager.CHUNK_CULLING_MAP;
-                if (chunkMap != null) chunkMap.updateCamera();
                 checkShader();
             }
             case "destroyProgress" -> {

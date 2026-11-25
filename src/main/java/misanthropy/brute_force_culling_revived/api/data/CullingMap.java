@@ -13,6 +13,7 @@ import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL44;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import static org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE;
 import static org.lwjgl.opengl.GL12.GL_BGRA;
@@ -23,7 +24,10 @@ public abstract class CullingMap {
     protected final int pboId;
     protected final int width;
     protected final int height;
-    protected final @NotNull ByteBuffer cullingBuffer;
+    private final @NotNull ByteBuffer cullingBuffer;
+    private final byte[][] snapshots = new byte[3][];
+    private int nextSnapshot;
+    protected volatile byte[] data;
     protected boolean done;
     protected boolean transferred;
     protected int delayCount = 0;
@@ -133,19 +137,25 @@ public abstract class CullingMap {
             GL32.glDeleteSync(fenceSync);
             fenceSync = 0;
         }
+        byte[] snapshot = snapshots[nextSnapshot];
+        if (snapshot == null) {
+            snapshot = snapshots[nextSnapshot] = new byte[width * height * 4];
+        }
+        nextSnapshot = (nextSnapshot + 1) % snapshots.length;
+        cullingBuffer.get(0, snapshot);
+        data = snapshot;
         pendingRead = false;
         setTransferred(false);
     }
     public void copyDataFrom(@NotNull CullingMap other) {
-        if (persistent) {
+        byte[] source = other.data;
+        if (source == null) {
             return;
         }
-        ByteBuffer src = other.cullingBuffer.duplicate();
-        ByteBuffer dst = this.cullingBuffer.duplicate();
-        src.position(0);
-        dst.position(0);
-        src.limit(Math.min(src.capacity(), dst.capacity()));
-        dst.put(src);
+        byte[] copy = new byte[width * height * 4];
+        Arrays.fill(copy, (byte) 0xFF);
+        System.arraycopy(source, 0, copy, 0, Math.min(source.length, copy.length));
+        data = copy;
     }
 
     abstract int configDelayCount();

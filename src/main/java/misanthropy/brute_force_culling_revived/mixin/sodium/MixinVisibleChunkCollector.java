@@ -24,4 +24,9 @@ public abstract class MixinVisibleChunkCollector implements ICollectorAccessor {
     public void bruteForceRenderingRevived$addRenderList(ChunkRenderList renderList) {
         this.sortedRenderLists.add(renderList);
     }
+
+    @Override
+    public void bruteForceRenderingRevived$clearRenderLists() {
+        this.sortedRenderLists.clear();
+    }
 }

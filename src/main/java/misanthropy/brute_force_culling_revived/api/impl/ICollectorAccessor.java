@@ -7,4 +7,6 @@ public interface ICollectorAccessor {
     void bruteForceRenderingRevived$addAsyncToRebuildLists(RenderSection section);
 
     void bruteForceRenderingRevived$addRenderList(ChunkRenderList renderList);
+
+    void bruteForceRenderingRevived$clearRenderLists();
 }

@@ -8,8 +8,12 @@ import net.minecraft.world.phys.Vec3;
 public class ChunkCullingMap extends CullingMap {
     private int renderDistance = 0;
     private int spacePartitionSize = 0;
-    private int cameraX;
-    private int cameraZ;
+    private int drawnX;
+    private int drawnZ;
+    private volatile View view;
+
+    private record View(byte[] data, int cameraX, int cameraZ) {
+    }
 
     public ChunkCullingMap(int width, int height) {
         super(width, height);
@@ -35,22 +39,33 @@ public class ChunkCullingMap extends CullingMap {
         this.spacePartitionSize = 2 * renderDistance + 1;
     }
 
-    public void updateCamera() {
+    @Override
+    public void markDrawn() {
+        super.markDrawn();
         Vec3 camera = CullingStateManager.CAMERA.getPosition();
-        this.cameraX = Mth.floor(camera.x) >> 4;
-        this.cameraZ = Mth.floor(camera.z) >> 4;
+        this.drawnX = Mth.floor(camera.x) >> 4;
+        this.drawnZ = Mth.floor(camera.z) >> 4;
+    }
+
+    @Override
+    public void readData() {
+        super.readData();
+        this.view = new View(this.data, this.drawnX, this.drawnZ);
     }
 
     public boolean isChunkOffsetCameraVisible(int x, int y, int z, boolean checkForChunk) {
-        return isChunkVisible((x >> 4) - cameraX, CullingStateManager.mapChunkY(y), (z >> 4) - cameraZ, checkForChunk);
-    }
-
-    public boolean isChunkVisible(int posX, int posY, int posZ, boolean checkForChunk) {
-        int index = 1 + (((posX + renderDistance) * spacePartitionSize * CullingStateManager.LEVEL_SECTION_RANGE + (posZ + renderDistance) * CullingStateManager.LEVEL_SECTION_RANGE + posY) << 2);
-
-        if (index >= 0 && index < cullingBuffer.limit()) {
-            return (cullingBuffer.get(index) & 0xFF) > (checkForChunk ? 0 : 127);
+        View view = this.view;
+        if (view == null) {
+            return true;
         }
-        return true;
+        int posX = (x >> 4) - view.cameraX + renderDistance;
+        int posY = CullingStateManager.mapChunkY(y);
+        int posZ = (z >> 4) - view.cameraZ + renderDistance;
+        int range = CullingStateManager.LEVEL_SECTION_RANGE;
+        if (posX < 0 || posX >= spacePartitionSize || posZ < 0 || posZ >= spacePartitionSize || posY < 0 || posY >= range) {
+            return true;
+        }
+        int index = 1 + (((posX * spacePartitionSize + posZ) * range + posY) << 2);
+        return index >= view.data.length || (view.data[index] & 0xFF) > (checkForChunk ? 0 : 127);
     }
 }

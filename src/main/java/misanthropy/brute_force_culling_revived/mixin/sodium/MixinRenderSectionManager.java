@@ -24,6 +24,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import org.spongepowered.asm.mixin.Unique;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -42,6 +44,12 @@ public abstract class MixinRenderSectionManager {
 
     @Shadow(remap = false)
     private @NotNull SortedRenderLists renderLists;
+
+    @Shadow(remap = false)
+    private boolean needsUpdate;
+
+    @Unique
+    private VisibleChunkCollector bruteForceRenderingRevived$shown;
 
     @Inject(method = "<init>", at = @At("TAIL"))
     private void init(ClientLevel world, int renderDistance, CommandList commandList, CallbackInfo ci) {
@@ -71,13 +79,32 @@ public abstract class MixinRenderSectionManager {
     @Inject(method = "update", at = @At(value = "HEAD"), remap = false, cancellable = true)
     private void onUpdate(Camera camera, Viewport viewport, int frame, boolean spectator, @NotNull CallbackInfo ci) {
         BlockPos cameraPos = camera.getBlockPosition();
-        if (VegetationThinning.update(cameraPos.getX() >> 4, cameraPos.getZ() >> 4, Minecraft.getInstance().options.getEffectiveRenderDistance())) {
+        int cameraX = cameraPos.getX() >> 4;
+        int cameraZ = cameraPos.getZ() >> 4;
+        int change = VegetationThinning.update(cameraX, cameraZ, Minecraft.getInstance().options.getEffectiveRenderDistance());
+        if (change == VegetationThinning.FULL) {
             for (RenderSection section : this.sectionByPosition.values()) {
-                IVegetationSection vegetation = (IVegetationSection) section;
-                if (!vegetation.bruteForceRenderingRevived$hasVegetation() || !section.isBuilt()) continue;
-                if (vegetation.bruteForceRenderingRevived$isVegetationThinned() == VegetationThinning.isFar(section.getChunkX(), section.getChunkZ())) continue;
-                if (ChunkUpdateType.canPromote(section.getPendingUpdate(), ChunkUpdateType.REBUILD)) {
-                    section.setPendingUpdate(ChunkUpdateType.REBUILD);
+                bruteForceRenderingRevived$rethin(section);
+            }
+        } else if (change == VegetationThinning.STEP) {
+            ClientLevel level = Minecraft.getInstance().level;
+            int range = VegetationThinning.range();
+            if (level != null) {
+                int inner = Math.max(0, range - 2);
+                int outer = range + 2;
+                int minY = level.getMinSection();
+                int maxY = level.getMaxSection();
+                for (int dx = -outer; dx <= outer; dx++) {
+                    for (int dz = -outer; dz <= outer; dz++) {
+                        int d2 = dx * dx + dz * dz;
+                        if (d2 < inner * inner || d2 > outer * outer) continue;
+                        for (int y = minY; y < maxY; y++) {
+                            RenderSection section = this.sectionByPosition.get(SectionPos.asLong(cameraX + dx, y, cameraZ + dz));
+                            if (section != null) {
+                                bruteForceRenderingRevived$rethin(section);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -85,6 +112,16 @@ public abstract class MixinRenderSectionManager {
             ci.cancel();
         }
         CullingStateManager.updating();
+    }
+
+    @Unique
+    private static void bruteForceRenderingRevived$rethin(RenderSection section) {
+        IVegetationSection vegetation = (IVegetationSection) section;
+        if (!vegetation.bruteForceRenderingRevived$hasVegetation() || !section.isBuilt()) return;
+        if (vegetation.bruteForceRenderingRevived$isVegetationThinned() == VegetationThinning.isFar(section.getChunkX(), section.getChunkZ())) return;
+        if (ChunkUpdateType.canPromote(section.getPendingUpdate(), ChunkUpdateType.REBUILD)) {
+            section.setPendingUpdate(ChunkUpdateType.REBUILD);
+        }
     }
 
     @ModifyVariable(
@@ -115,6 +152,8 @@ public abstract class MixinRenderSectionManager {
     private void onCreateTerrainRenderList(boolean updateImmediately, CallbackInfo ci) {
         if (!Config.getAsyncChunkRebuild()) return;
         VisibleChunkCollector collector = SodiumSectionAsyncUtil.getActiveCollector();
-        if (collector != null) this.renderLists = collector.createRenderLists();
+        if (collector == null || collector == bruteForceRenderingRevived$shown || this.needsUpdate) return;
+        bruteForceRenderingRevived$shown = collector;
+        this.renderLists = collector.createRenderLists();
     }
 }

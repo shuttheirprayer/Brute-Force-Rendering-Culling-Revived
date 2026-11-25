@@ -63,7 +63,8 @@ public class EntityCullingMap extends CullingMap {
 
     private boolean isSlotVisible(int idx) {
         int bufferIdx = 1 + idx * 4;
-        return bufferIdx >= cullingBuffer.limit() || (cullingBuffer.get(bufferIdx) & 0xFF) > 0;
+        byte[] data = this.data;
+        return data == null || bufferIdx >= data.length || (data[bufferIdx] & 0xFF) > 0;
     }
 
     @Override
